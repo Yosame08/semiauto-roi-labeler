@@ -1,0 +1,5 @@
+__pycache__/
+.idea/
+*.json
+*.mp4
+*.pt
