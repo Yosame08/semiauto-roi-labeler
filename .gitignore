@@ -1,4 +1,7 @@
 __pycache__/
+plant_annotate/
+RoI_Datasets/
+roi_datasets/
 .idea/
 *.json
 *.mp4

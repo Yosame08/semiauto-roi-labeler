@@ -10,6 +10,27 @@ timeslot = 10
 window_name = "Frame"
 last_autosave = time.time()
 
+def bound_xywh(x, y, w, h, frame_w, frame_h):
+    if x < 0:
+        w += x
+        if w <= 0:
+            w = 1
+        x = 0
+    if y < 0:
+        h += y
+        if h <= 0:
+            h = 1
+        y = 0
+    if x + w >= frame_w:
+        if x >= frame_w:
+            x = frame_w - 1
+        w = frame_w - x
+    if y + h > frame_h:
+        if y >= frame_h:
+            y = frame_h - 1
+        h = frame_h - y
+    return x, y, w, h
+
 class VideoAnnotator:
     def __init__(self, file_path):
         # 如果file_path是json文件，则加载标注工程
@@ -163,6 +184,7 @@ class VideoAnnotator:
             success, box = tracker.update(frame)
             if success:
                 x, y, w, h = [int(v) for v in box]
+                x, y, w, h = bound_xywh(x, y, w, h, self.frame_w, self.frame_h)
                 print(f"\rTracked frame {current}: {x, y, w, h}")
                 self.annotations[current] = (x, y, w, h)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
@@ -226,7 +248,7 @@ class VideoAnnotator:
         save_dir = Path(input("请输入保存路径（覆盖已有文件）："))
         (save_dir / "images").mkdir(parents=True, exist_ok=True)
         (save_dir / "labels").mkdir(parents=True, exist_ok=True)
-        frame_interval = int(input("抽帧频率（输入0保存所有帧，若有未标注帧则顺延）："))
+        frame_interval = int(input("每几帧保存1帧？（输入1保存所有帧，若有未标注帧则顺延）"))
         for frame_num in range(0, self.total_frames, frame_interval):
             while frame_num not in self.annotations and frame_num < self.total_frames:
                 frame_num += 1
