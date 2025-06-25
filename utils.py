@@ -7,6 +7,7 @@ def print_manual(frame, framerate):
     print("左键拖动：手动框选RoI")
     print("Y(yolo)：在该帧运行YOLO物体检测")
     print("T(track)：开始跟踪（需该帧已选RoI）")
+    print("C(clear)：从当前帧开始清除已标注RoI")
     print("S(save)：保存标注工程")
     print("E(export)：导出标注结果")
     print("Q(quit)：直接退出")

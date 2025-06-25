@@ -113,6 +113,8 @@ class VideoAnnotator:
                     break
                 except ValueError:
                     print("输入错误，请重新输入")
+        elif key == ord('c'):  # 清除标注
+            self.clear_annotation()
         elif key == ord('s'):  # 保存标注工程
             self.user_save()
         elif key == ord('e'):  # 导出标注结果
@@ -234,6 +236,33 @@ class VideoAnnotator:
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
         return self.cap.read()
 
+    def clear_annotation(self):
+        print("从当前帧清除到哪一帧？")
+        while True:
+            try:
+                clear_to = int(input("输入帧号（0表示清除到最后一帧）："))
+                if clear_to < self.current_frame:
+                    start, end = clear_to, self.current_frame
+                else:
+                    start, end = self.current_frame, clear_to
+                if start < 0:
+                    start = 0
+                if end >= self.total_frames:
+                    end = self.total_frames - 1
+                print(f"确认清除从{start}到{end}的标注结果？")
+                confirm = input("输入y确认，其他键取消：")
+                if confirm.lower() == 'y':
+                    for frame_num in range(start, end + 1):
+                        if frame_num in self.annotations:
+                            del self.annotations[frame_num]
+                    print(f"已清除从{start}到{end}的标注结果")
+                else:
+                    print("清除操作已取消")
+                time.sleep(1.5)
+                return
+            except RuntimeError as e:
+                print(f"输入错误：{e}")
+
     def export_annotation(self):
         print("文件结构：")
         print("selected_folder")
@@ -248,7 +277,19 @@ class VideoAnnotator:
         save_dir = Path(input("请输入保存路径（覆盖已有文件）："))
         (save_dir / "images").mkdir(parents=True, exist_ok=True)
         (save_dir / "labels").mkdir(parents=True, exist_ok=True)
-        frame_interval = int(input("每几帧保存1帧？（输入1保存所有帧，若有未标注帧则顺延）"))
+        scale_factor = 1
+        while True:
+            try:
+                scale_factor = float(input("图像缩放倍数（0.5表示将图像长宽缩小一半，2.0表示放大一倍）："))
+                while scale_factor <= 0:
+                    scale_factor = float(input("缩放倍数必须是正数，请重新输入："))
+                frame_interval = int(input("每几帧保存1帧？（输入1保存所有帧，若有未标注帧则顺延）"))
+                while frame_interval <= 0:
+                    frame_interval = int(input("缩放倍数必须是正数，请重新输入："))
+                break
+            except RuntimeError as e:
+                print(f"无效输入：{e}")
+                continue
         for frame_num in range(0, self.total_frames, frame_interval):
             while frame_num not in self.annotations and frame_num < self.total_frames:
                 frame_num += 1
@@ -256,6 +297,13 @@ class VideoAnnotator:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
             ret, frame = self.cap.read()
             if not ret: continue
+
+            # 应用缩放 - 使用双三次插值
+            if scale_factor != 1.0:
+                h, w = frame.shape[:2]
+                new_w = int(w * scale_factor)
+                new_h = int(h * scale_factor)
+                frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
 
             # 保存图像
             img_path = save_dir / "images" / f"frame_{frame_num:06d}.jpg"
