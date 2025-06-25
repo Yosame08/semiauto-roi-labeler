@@ -291,12 +291,27 @@ class VideoAnnotator:
                 print(f"无效输入：{e}")
                 continue
         for frame_num in range(0, self.total_frames, frame_interval):
-            while frame_num not in self.annotations and frame_num < self.total_frames:
+            upper_lim = min(frame_num + frame_interval, self.total_frames)
+            while frame_num not in self.annotations and frame_num < upper_lim:
                 frame_num += 1
-            if frame_num >= self.total_frames: break
+            if frame_num >= upper_lim:
+                continue
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
             ret, frame = self.cap.read()
-            if not ret: continue
+            if not ret or not frame_num in self.annotations:
+                continue
+
+            # 生成标签
+            label_path = save_dir / "labels" / f"frame_{frame_num:06d}.txt"
+            x, y, w, h = self.annotations[frame_num]
+            img_h, img_w = frame.shape[:2]
+            # 转换为YOLO格式
+            x_center = (x + w / 2) / img_w
+            y_center = (y + h / 2) / img_h
+            width = w / img_w
+            height = h / img_h
+            with open(label_path, 'w') as f:
+                f.write(f"0 {x_center:.8f} {y_center:.8f} {width:.8f} {height:.8f}\n")
 
             # 应用缩放 - 使用双三次插值
             if scale_factor != 1.0:
@@ -304,25 +319,11 @@ class VideoAnnotator:
                 new_w = int(w * scale_factor)
                 new_h = int(h * scale_factor)
                 frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
-
             # 保存图像
             img_path = save_dir / "images" / f"frame_{frame_num:06d}.jpg"
             cv2.imwrite(str(img_path), frame)
 
-            # 生成标签
-            label_path = save_dir / "labels" / f"frame_{frame_num:06d}.txt"
-            if frame_num in self.annotations:
-                x, y, w, h = self.annotations[frame_num]
-                img_h, img_w = frame.shape[:2]
 
-                # 转换为YOLO格式
-                x_center = (x + w / 2) / img_w
-                y_center = (y + h / 2) / img_h
-                width = w / img_w
-                height = h / img_h
-
-                with open(label_path, 'w') as f:
-                    f.write(f"0 {x_center:.8f} {y_center:.8f} {width:.8f} {height:.8f}\n")
 
     def user_save(self):
         filename = input("请输入文件名（覆盖已有文件，json文件）：")
