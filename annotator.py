@@ -263,7 +263,33 @@ class VideoAnnotator:
             except RuntimeError as e:
                 print(f"输入错误：{e}")
 
+    def check_annotation(self):
+        not_annotated = []
+        idx = 0
+        start = None
+        while idx < self.total_frames:
+            if not start and idx not in self.annotations:
+                start = idx
+            elif start and idx in self.annotations:
+                not_annotated.append((start, idx-1))
+                start = None
+            idx += 1
+        if start:
+            not_annotated.append((start, idx-1))
+        return not_annotated
+
     def export_annotation(self):
+        not_annotated = self.check_annotation()
+        if len(not_annotated) == 0:
+            print("所有帧均已标注")
+        else:
+            s = ''
+            for n in not_annotated:
+                s += f"[{n[0]}, {n[1]}], "
+            print(f"未标注区间：{s[:-1]}")
+        confirm = input("确定要导出吗？(y/n)")
+        if not confirm.strip().lower() == 'y':
+            return
         print("文件结构：")
         print("selected_folder")
         print("├── images")
